@@ -1,0 +1,115 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+ 
+void main() => runApp(const MaterialApp(debugShowCheckedModeBanner: false, home: InputScreen()));
+ 
+const kP = Color(0xFF534AB7);
+ 
+({String l, Color c, Color bg}) perf(double p) => p >= 75
+    ? (l: 'Excellent 🌟', c: const Color(0xFF3B6D11), bg: const Color(0xFFEAF3DE))
+    : p >= 60 ? (l: 'Good 👍', c: const Color(0xFF185FA5), bg: const Color(0xFFE6F1FB))
+    : p >= 50 ? (l: 'Average 😐', c: const Color(0xFF854F0B), bg: const Color(0xFFFAEEDA))
+    : (l: 'Needs Improvement 📚', c: const Color(0xFFA32D2D), bg: const Color(0xFFFCEBEB));
+ 
+class InputScreen extends StatefulWidget {
+  const InputScreen({super.key});
+  @override State<InputScreen> createState() => _IS();
+}
+class _IS extends State<InputScreen> {
+  final _c = TextEditingController();
+  String _t = 'CGPA'; String? _e;
+  void _go() {
+    final v = double.tryParse(_c.text.trim());
+    if (v == null || v < 0 || v > 10) { setState(() => _e = 'Enter a valid grade (0–10)'); return; }
+    setState(() => _e = null);
+    Navigator.push(context, MaterialPageRoute(builder: (_) => ResultScreen(g: v, t: _t)));
+  }
+  @override
+  Widget build(BuildContext ctx) => Scaffold(
+    backgroundColor: const Color(0xFFF5F5FF),
+    appBar: AppBar(title: const Text('Grade Converter'), backgroundColor: kP, foregroundColor: Colors.white, centerTitle: true),
+    body: Padding(padding: const EdgeInsets.all(24), child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Icon(Icons.school_rounded, color: kP, size: 56),
+      const SizedBox(height: 8),
+      const Text('CGPA / SGPA → Percentage', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+      const SizedBox(height: 24),
+      TextField(
+        controller: _c,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d{0,2}\.?\d{0,2}'))],
+        decoration: InputDecoration(
+          labelText: 'Enter CGPA / SGPA (0–10)',
+          errorText: _e, border: const OutlineInputBorder(),
+          focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: kP, width: 2)),
+          prefixIcon: const Icon(Icons.grade, color: kP)),
+        onChanged: (_) { if (_e != null) setState(() => _e = null); },
+      ),
+      const SizedBox(height: 20),
+      const Text('Select Type', style: TextStyle(fontWeight: FontWeight.w600)),
+      Row(children: ['CGPA', 'SGPA'].map((t) => Expanded(child: RadioListTile<String>(
+        title: Text(t), value: t, groupValue: _t, activeColor: kP,
+        onChanged: (v) => setState(() => _t = v!)))).toList()),
+      const SizedBox(height: 8),
+      ElevatedButton.icon(
+        onPressed: _go,
+        icon: const Icon(Icons.calculate_rounded),
+        label: const Text('Convert to Percentage', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        style: ElevatedButton.styleFrom(backgroundColor: kP, foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0)),
+      const SizedBox(height: 12),
+      const Text('Formula: Percentage = Grade × 9.5', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 13)),
+    ])),
+  );
+}
+ 
+class ResultScreen extends StatelessWidget {
+  final double g; final String t;
+  const ResultScreen({super.key, required this.g, required this.t});
+  @override
+  Widget build(BuildContext ctx) {
+    final pct = g * 9.5; final p = perf(pct);
+    final scales = [(l:'Excellent',r:'75%+',a:pct>=75,c:const Color(0xFF3B6D11),b:const Color(0xFFEAF3DE)),(l:'Good',r:'60-74%',a:pct>=60&&pct<75,c:const Color(0xFF185FA5),b:const Color(0xFFE6F1FB)),(l:'Average',r:'50-59%',a:pct>=50&&pct<60,c:const Color(0xFF854F0B),b:const Color(0xFFFAEEDA)),(l:'Needs Improvement',r:'<50%',a:pct<50,c:const Color(0xFFA32D2D),b:const Color(0xFFFCEBEB))];
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5FF),
+      appBar: AppBar(title: const Text('Your Result'), backgroundColor: kP, foregroundColor: Colors.white, centerTitle: true),
+      body: SingleChildScrollView(padding: const EdgeInsets.all(20), child: Column(children: [
+        Card(elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), child: Padding(padding: const EdgeInsets.all(24), child: Column(children: [
+          Text('$t: ${g.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          const SizedBox(height: 8),
+          Text('${pct.toStringAsFixed(2)}%', style: const TextStyle(fontSize: 60, fontWeight: FontWeight.w800, color: kP, height: 1)),
+          const SizedBox(height: 12),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(color: p.bg, borderRadius: BorderRadius.circular(99)),
+            child: Text(p.l, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: p.c))),
+          const SizedBox(height: 16),
+          ClipRRect(borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(value: (pct/100).clamp(0,1), minHeight: 10,
+              backgroundColor: const Color(0xFFF0EFF9), valueColor: AlwaysStoppedAnimation(p.c))),
+          const SizedBox(height: 6),
+          Text('${pct.toStringAsFixed(1)}% out of 100%', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ]))),
+        const SizedBox(height: 16),
+        Card(elevation: 1, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), child: Column(children: [
+          const Padding(padding: EdgeInsets.all(12), child: Text('Performance Scale', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+          ...scales.map((s) => Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(color: s.a ? s.b : Colors.grey[100], borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: s.a ? s.c.withOpacity(0.4) : Colors.transparent, width: 1.5)),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text(s.l, style: TextStyle(fontWeight: s.a ? FontWeight.w700 : FontWeight.w400, color: s.a ? s.c : Colors.grey[500])),
+              Text(s.r, style: TextStyle(fontSize: 12, color: s.a ? s.c : Colors.grey[400])),
+            ]))),
+          const SizedBox(height: 12),
+        ])),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: () => Navigator.pop(ctx),
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Convert Another Grade', style: TextStyle(fontWeight: FontWeight.w600)),
+          style: ElevatedButton.styleFrom(backgroundColor: kP, foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), elevation: 0)),
+      ])),
+    );
+  }
+}
